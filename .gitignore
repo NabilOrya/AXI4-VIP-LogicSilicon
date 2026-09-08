@@ -1,0 +1,6 @@
+# Simulation build artifacts
+sim/xcelium.d/
+sim/xrun.*
+*.log
+*.history
+*.key

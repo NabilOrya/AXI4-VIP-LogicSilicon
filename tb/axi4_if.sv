@@ -1,6 +1,7 @@
 interface axi4_if #(parameter ADDR_W=16, DATA_W=32, ID_W=4) (input logic ACLK);
 
   logic ARESETn;
+  logic IRQ; //Added this missing Signal
 
   logic [ID_W-1:0]   AWID;
   logic [ADDR_W-1:0] AWADDR;
