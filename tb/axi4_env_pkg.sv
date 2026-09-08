@@ -17,6 +17,20 @@ package axi4_env_pkg;
   `include "agents/read_agent/axi4_read_sequencer.sv"
   `include "agents/read_agent/axi4_read_agent.sv"
 
+  // Sequences
+  `include "sequences/axi4_write_base_seq.sv"
+  `include "sequences/axi4_read_base_seq.sv"
+  `include "sequences/seq_reset_basic.sv"
+  `include "sequences/seq_reset_readback_zero.sv"
+  `include "sequences/seq_reset_midtxn.sv"
+  `include "sequences/seq_reg_ctrl_rw.sv"
+  `include "sequences/seq_reg_status_ro_check.sv"
+  `include "sequences/seq_reg_int_en_rw.sv"
+  `include "sequences/seq_reg_int_status_w1c.sv"
+  `include "sequences/seq_reg_fifo_data_access.sv"
+  `include "sequences/seq_reg_fifo_status_ro_check.sv"
+  `include "sequences/seq_reg_delay_cfg_rw.sv"
+
   // Env Components
   `include "env/axi4_ref_model.sv"
   `include "env/axi4_coverage.sv"

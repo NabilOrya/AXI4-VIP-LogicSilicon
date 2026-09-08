@@ -3,33 +3,6 @@ import uvm_pkg::*;
 
 class axi4_write_txn extends uvm_sequence_item;
 
-  rand bit [3:0]  id;
-  rand bit [15:0] addr;
-  rand bit [7:0]  len;
-
-  `uvm_object_utils_begin(axi4_write_txn)
-    `uvm_field_int(id, UVM_ALL_ON)
-    `uvm_field_int(addr, UVM_ALL_ON)
-    `uvm_field_int(len, UVM_ALL_ON)
-  `uvm_object_utils_end
-
-  function new(string name = "axi4_write_txn");
-    super.new(name);
-  endfunction
-
-  function void post_randomize();
-    `uvm_info("WRITE_TXN", $sformatf("Randomized Txn: ID=%0d Addr=0x%0h", id, addr), UVM_HIGH)
-  endfunction
-
-endclass
-
-
-
-/*import uvm_pkg::*;
-`include "uvm_macros.svh"
-
-class axi4_write_txn extends uvm_sequence_item;
-
   // AW Channel Signals
   rand bit [3:0]  id;
   rand bit [15:0] addr;
@@ -44,7 +17,6 @@ class axi4_write_txn extends uvm_sequence_item;
   // B Channel Signal (Sampled by Monitor/Driver)
   bit [1:0]       resp;   // 0=OKAY, 1=EXOKAY, 2=SLVERR, 3=DECERR
 
-  // UVM Field Macros for easy print, copy, compare, and record
   `uvm_object_utils_begin(axi4_write_txn)
     `uvm_field_int(id, UVM_ALL_ON)
     `uvm_field_int(addr, UVM_ALL_ON)
@@ -57,9 +29,9 @@ class axi4_write_txn extends uvm_sequence_item;
   `uvm_object_utils_end
 
   // Constraints for legal default values
-  constraint c_len   { len inside {[0:15]}; }             // Max 16 beats per AXI4 spec
-  constraint c_size  { size inside {3'b000, 3'b001, 3'b010}; } // Up to 32-bit (4 bytes)
-  constraint c_burst { burst inside {2'b00, 2'b01}; }    // Default to FIXED or INCR
+  constraint c_len   { len inside {[0:15]}; }
+  constraint c_size  { size inside {3'b000, 3'b001, 3'b010}; }
+  constraint c_burst { burst inside {2'b00, 2'b01}; }
   
   // Array sizes must match number of beats (len + 1)
   constraint c_data_size {
@@ -71,10 +43,10 @@ class axi4_write_txn extends uvm_sequence_item;
     super.new(name);
   endfunction
 
-  // Post-randomize function to display generated transaction
   function void post_randomize();
     `uvm_info("WRITE_TXN", $sformatf("Randomized Txn: ID=%0d Addr=0x%0h Len=%0d Size=%0d Burst=%0d", 
               id, addr, len, size, burst), UVM_HIGH)
   endfunction
 
-endclass*/
+endclass
+
