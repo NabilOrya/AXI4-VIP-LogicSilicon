@@ -23,7 +23,7 @@ module top_example;
     aresetn = 1;
   end
 
-  // Interface Instantiation (Passing only ACLK per interface definition)
+  // Interface Instantiation 
   axi4_if intf (aclk);
 
   // Connect active-low reset to interface signal
@@ -79,6 +79,46 @@ module top_example;
 
     // Interrupt Request Output Port
     .IRQ(intf.IRQ)
+  );
+
+  // Bind SystemVerilog Assertions (SVA) Module to DUT
+  bind axi4_peripheral axi4_sva #(
+    .ADDR_W(16),
+    .DATA_W(32),
+    .ID_W(4)
+  ) sva_inst (
+    .ACLK(ACLK),
+    .ARESETn(ARESETn),
+    .AWID(AWID),
+    .AWADDR(AWADDR),
+    .AWLEN(AWLEN),
+    .AWSIZE(AWSIZE),
+    .AWBURST(AWBURST),
+    .AWVALID(AWVALID),
+    .AWREADY(AWREADY),
+    .WDATA(WDATA),
+    .WSTRB(WSTRB),
+    .WLAST(WLAST),
+    .WVALID(WVALID),
+    .WREADY(WREADY),
+    .BID(BID),
+    .BRESP(BRESP),
+    .BVALID(BVALID),
+    .BREADY(BREADY),
+    .ARID(ARID),
+    .ARADDR(ARADDR),
+    .ARLEN(ARLEN),
+    .ARSIZE(ARSIZE),
+    .ARBURST(ARBURST),
+    .ARVALID(ARVALID),
+    .ARREADY(ARREADY),
+    .RID(RID),
+    .RDATA(RDATA),
+    .RRESP(RRESP),
+    .RLAST(RLAST),
+    .RVALID(RVALID),
+    .RREADY(RREADY),
+    .IRQ(IRQ)
   );
 
   // UVM Configuration and Test Initiation

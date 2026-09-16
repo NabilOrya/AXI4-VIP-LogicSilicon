@@ -31,7 +31,8 @@ class axi4_env extends uvm_env;
 
     write_agent.monitor.item_collected_port.connect(scoreboard.write_export);
     read_agent.monitor.item_collected_port.connect(scoreboard.read_export);
-    write_agent.monitor.item_collected_port.connect(coverage.analysis_export);
+    write_agent.monitor.item_collected_port.connect(coverage.write_export);
+    read_agent.monitor.item_collected_port.connect(coverage.read_export);
   endfunction
 
 endclass
