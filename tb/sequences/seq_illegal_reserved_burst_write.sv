@@ -23,6 +23,9 @@ class seq_illegal_reserved_burst_write extends uvm_sequence #(axi4_write_txn);
     wr_seq.seq_len  = 8'h01;
     wr_seq.seq_size = 3'b010;
     wr_seq.seq_burst= 2'b11; // Reserved burst encoding
+    wr_seq.allow_illegal = 1;
+    wr_seq.check_resp    = 1;
+    wr_seq.expect_resp   = 2'b10;
     wr_seq.start(m_sequencer);
 
     `uvm_info("SEQ_ILLEGAL_RSVD_WRITE", "Sequence #16 completed", UVM_LOW)

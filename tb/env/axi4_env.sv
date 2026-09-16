@@ -29,10 +29,27 @@ class axi4_env extends uvm_env;
     super.connect_phase(phase);
     `uvm_info("ENV", "connect_phase executed", UVM_LOW)
 
+    // Monitor -> ref first so expectations are queued before/with actuals
+    write_agent.monitor.item_collected_port.connect(ref_model.write_export);
+    read_agent.monitor.item_collected_port.connect(ref_model.read_export);
+
+    // Monitor -> scoreboard (actuals)
     write_agent.monitor.item_collected_port.connect(scoreboard.write_export);
     read_agent.monitor.item_collected_port.connect(scoreboard.read_export);
+
+    // Ref predictions -> scoreboard
+    ref_model.exp_write_port.connect(scoreboard.exp_write_export);
+    ref_model.exp_read_port.connect(scoreboard.exp_read_export);
+
+    // Coverage
     write_agent.monitor.item_collected_port.connect(coverage.write_export);
     read_agent.monitor.item_collected_port.connect(coverage.read_export);
+
+    // Needed by virtual / mixed R+W sequences (axi4_vseq_base)
+    if (write_agent.sequencer != null)
+      uvm_config_db#(axi4_write_sequencer)::set(null, "*", "write_seqr", write_agent.sequencer);
+    if (read_agent.sequencer != null)
+      uvm_config_db#(axi4_read_sequencer)::set(null, "*", "read_seqr", read_agent.sequencer);
   endfunction
 
 endclass

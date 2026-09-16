@@ -23,6 +23,9 @@ class seq_illegal_wrap_burst_read extends uvm_sequence #(axi4_read_txn);
     rd_seq.seq_len  = 8'h03; // 4 beats
     rd_seq.seq_size = 3'b010; // 4 bytes
     rd_seq.seq_burst= 2'b10; // WRAP burst (Illegal for DUT)
+    rd_seq.allow_illegal = 1;
+    rd_seq.check_resp    = 1;
+    rd_seq.expect_resp   = 2'b10;
     rd_seq.start(m_sequencer);
 
     `uvm_info("SEQ_ILLEGAL_WRAP_READ", "Sequence #15 completed", UVM_LOW)

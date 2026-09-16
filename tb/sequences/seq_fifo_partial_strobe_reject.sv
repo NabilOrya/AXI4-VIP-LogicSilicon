@@ -27,6 +27,8 @@ class seq_fifo_partial_strobe_reject extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h00000002;
+    wr_seq.check_resp   = 1;
+    wr_seq.expect_resp  = 2'b00;
     wr_seq.start(m_sequencer);
 
     // Write to FIFO_DATA with partial WSTRB = 4'h1 (Illegal for FIFO)
@@ -40,6 +42,8 @@ class seq_fifo_partial_strobe_reject extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h12345678;
+    wr_seq.check_resp   = 1;
+    wr_seq.expect_resp  = 2'b10; // SLVERR
     wr_seq.start(m_sequencer);
 
     `uvm_info("SEQ_FIFO_PARTIAL_STROBE", "Sequence #42 completed", UVM_LOW)

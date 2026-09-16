@@ -5,7 +5,7 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-class seq_reg_txn_count_ro_check extends uvm_sequence #(axi4_write_txn);
+class seq_reg_txn_count_ro_check extends axi4_vseq_base;
   `uvm_object_utils(seq_reg_txn_count_ro_check)
 
   function new(string name = "seq_reg_txn_count_ro_check");
@@ -25,7 +25,7 @@ class seq_reg_txn_count_ro_check extends uvm_sequence #(axi4_write_txn);
     rd_seq.seq_len  = 8'h00;
     rd_seq.seq_size = 3'b010;
     rd_seq.seq_burst= 2'b00;
-    rd_seq.start(m_sequencer);
+    start_read(rd_seq);
 
     // Attempt illegal write to RO TXN_COUNT register
     wr_seq = axi4_write_base_seq::type_id::create("wr_illegal");
@@ -37,10 +37,10 @@ class seq_reg_txn_count_ro_check extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'hFFFFFFFF;
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Read back TXN_COUNT to verify protection
-    rd_seq.start(m_sequencer);
+    start_read(rd_seq);
 
     `uvm_info("SEQ_REG_TXN_COUNT_RO_CHECK", "Sequence #11 completed", UVM_LOW)
   endtask

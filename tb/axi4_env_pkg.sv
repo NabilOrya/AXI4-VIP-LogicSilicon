@@ -2,6 +2,13 @@
 
 package axi4_env_pkg;
   `include "uvm_macros.svh"
+  import uvm_pkg::*;
+
+  // Declare analysis-imp suffixes once for the whole package
+  `uvm_analysis_imp_decl(_write)
+  `uvm_analysis_imp_decl(_read)
+  `uvm_analysis_imp_decl(_exp_write)
+  `uvm_analysis_imp_decl(_exp_read)
 
   // Write Agent
   `include "agents/write_agent/axi4_write_txn.sv"

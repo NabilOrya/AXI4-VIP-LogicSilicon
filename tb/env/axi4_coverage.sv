@@ -5,9 +5,6 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-`uvm_analysis_imp_decl(_write)
-`uvm_analysis_imp_decl(_read)
-
 class axi4_coverage extends uvm_component;
   `uvm_component_utils(axi4_coverage)
 
@@ -82,7 +79,7 @@ class axi4_coverage extends uvm_component;
       bins REG_DELAY_CFG  = {16'h1018};
       bins REG_TXN_COUNT  = {16'h101C};
       bins SLVERR_WINDOW  = {[16'h2000:16'h2FFF]};
-      default_bin UNMAPPED = default;
+      bins UNMAPPED       = default;
     }
     cp_access_dir: coverpoint sample_access_dir {
       bins WRITE = {1'b0};
@@ -115,7 +112,7 @@ class axi4_coverage extends uvm_component;
     }
     cp_same_id: coverpoint sample_same_id_b2b {
       bins DIFF_ID = {1'b0};
-      bins SAME_ID = {1 me};
+      bins SAME_ID = {1'b1};
     }
     cross_id_b2b: cross cp_id_val, cp_same_id;
   endgroup

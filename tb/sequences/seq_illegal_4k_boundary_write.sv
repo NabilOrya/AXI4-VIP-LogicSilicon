@@ -24,6 +24,8 @@ class seq_illegal_4k_boundary_write extends uvm_sequence #(axi4_write_txn);
     wr_seq.seq_len  = 8'h0F; // 16 beats
     wr_seq.seq_size = 3'b010; // 4 bytes/beat -> 64 bytes total span
     wr_seq.seq_burst= 2'b01; // INCR
+    wr_seq.check_resp    = 1;
+    wr_seq.expect_resp   = 2'b10;
     wr_seq.start(m_sequencer);
 
     `uvm_info("SEQ_ILLEGAL_4K_WRITE", "Sequence #22 completed", UVM_LOW)

@@ -5,7 +5,7 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-class seq_fifo_disable_clears_contents extends uvm_sequence #(axi4_write_txn);
+class seq_fifo_disable_clears_contents extends axi4_vseq_base;
   `uvm_object_utils(seq_fifo_disable_clears_contents)
 
   function new(string name = "seq_fifo_disable_clears_contents");
@@ -28,7 +28,7 @@ class seq_fifo_disable_clears_contents extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h00000002;
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Step 2: Push 3 items
     for (int i = 0; i < 3; i++) begin
@@ -42,7 +42,7 @@ class seq_fifo_disable_clears_contents extends uvm_sequence #(axi4_write_txn);
       wr_seq.override_data= 1;
       wr_seq.seq_data     = new[1];
       wr_seq.seq_data[0]  = 32'hC0C00000 + i;
-      wr_seq.start(m_sequencer);
+      start_write(wr_seq);
     end
 
     // Step 3: Disable FIFO (fifo_en = 0 -> 0x0)
@@ -55,7 +55,7 @@ class seq_fifo_disable_clears_contents extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h00000000;
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Step 4: Read FIFO_STATUS (0x1014) to verify level=0 and empty=1
     rd_seq = axi4_read_base_seq::type_id::create("rd_stat");
@@ -64,7 +64,7 @@ class seq_fifo_disable_clears_contents extends uvm_sequence #(axi4_write_txn);
     rd_seq.seq_len  = 8'h00;
     rd_seq.seq_size = 3'b010;
     rd_seq.seq_burst= 2'b00;
-    rd_seq.start(m_sequencer);
+    start_read(rd_seq);
 
     `uvm_info("SEQ_FIFO_DISABLE_CLEAR", "Sequence #41 completed", UVM_LOW)
   endtask

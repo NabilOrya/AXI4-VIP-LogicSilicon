@@ -23,6 +23,9 @@ class seq_illegal_size_gt2_read extends uvm_sequence #(axi4_read_txn);
     rd_seq.seq_len  = 8'h00;
     rd_seq.seq_size = 3'b011; // size=3 (8 bytes, unsupported)
     rd_seq.seq_burst= 2'b01;
+    rd_seq.allow_illegal = 1;
+    rd_seq.check_resp    = 1;
+    rd_seq.expect_resp   = 2'b10;
     rd_seq.start(m_sequencer);
 
     `uvm_info("SEQ_ILLEGAL_SIZE_READ", "Sequence #21 completed", UVM_LOW)

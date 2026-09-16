@@ -5,7 +5,7 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-class seq_reg_int_status_w1c extends uvm_sequence #(axi4_write_txn);
+class seq_reg_int_status_w1c extends axi4_vseq_base;
   `uvm_object_utils(seq_reg_int_status_w1c)
 
   function new(string name = "seq_reg_int_status_w1c");
@@ -25,7 +25,7 @@ class seq_reg_int_status_w1c extends uvm_sequence #(axi4_write_txn);
     rd_seq.seq_len  = 8'h00;
     rd_seq.seq_size = 3'b010;
     rd_seq.seq_burst= 2'b00;
-    rd_seq.start(m_sequencer);
+    start_read(rd_seq);
 
     // Issue Write 1 to clear bit 2 (error event)
     wr_seq = axi4_write_base_seq::type_id::create("wr_seq");
@@ -37,10 +37,10 @@ class seq_reg_int_status_w1c extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h00000004; // Clear bit 2
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Read back INT_STATUS to verify cleared bit
-    rd_seq.start(m_sequencer);
+    start_read(rd_seq);
 
     `uvm_info("SEQ_REG_INT_STATUS_W1C", "Sequence #7 completed", UVM_LOW)
   endtask

@@ -5,7 +5,7 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-class seq_backpressure_sweep extends uvm_sequence #(axi4_write_txn);
+class seq_backpressure_sweep extends axi4_vseq_base;
   `uvm_object_utils(seq_backpressure_sweep)
 
   function new(string name = "seq_backpressure_sweep");
@@ -28,7 +28,7 @@ class seq_backpressure_sweep extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h000000FF;
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Step 2: Enable delay_en in CTRL (bit2 = 1 -> 0x4)
     wr_seq = axi4_write_base_seq::type_id::create("wr_ctrl");
@@ -40,7 +40,7 @@ class seq_backpressure_sweep extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h00000004; // delay_en=1
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Step 3: Run write and read bursts under maximum backpressure
     wr_seq = axi4_write_base_seq::type_id::create("wr_stressed");
@@ -49,7 +49,7 @@ class seq_backpressure_sweep extends uvm_sequence #(axi4_write_txn);
     wr_seq.seq_len  = 8'h03; // 4 beats
     wr_seq.seq_size = 3'b010;
     wr_seq.seq_burst= 2'b01;
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     rd_seq = axi4_read_base_seq::type_id::create("rd_stressed");
     rd_seq.seq_id   = 4'h1;
@@ -57,7 +57,7 @@ class seq_backpressure_sweep extends uvm_sequence #(axi4_write_txn);
     rd_seq.seq_len  = 8'h03; // 4 beats
     rd_seq.seq_size = 3'b010;
     rd_seq.seq_burst= 2'b01;
-    rd_seq.start(m_sequencer);
+    start_read(rd_seq);
 
     `uvm_info("SEQ_BACKPRESSURE_SWEEP", "Sequence #49 completed", UVM_LOW)
   endtask

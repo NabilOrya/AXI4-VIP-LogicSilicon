@@ -23,6 +23,9 @@ class seq_illegal_len_gt15_read extends uvm_sequence #(axi4_read_txn);
     rd_seq.seq_len  = 8'h10; // len=16 (>15 limit)
     rd_seq.seq_size = 3'b010;
     rd_seq.seq_burst= 2'b01;
+    rd_seq.allow_illegal = 1;
+    rd_seq.check_resp    = 1;
+    rd_seq.expect_resp   = 2'b10;
     rd_seq.start(m_sequencer);
 
     `uvm_info("SEQ_ILLEGAL_LEN_READ", "Sequence #19 completed", UVM_LOW)

@@ -23,6 +23,9 @@ class seq_illegal_size_gt2_write extends uvm_sequence #(axi4_write_txn);
     wr_seq.seq_len  = 8'h00;
     wr_seq.seq_size = 3'b011; // size=3 (8 bytes, unsupported)
     wr_seq.seq_burst= 2'b01;
+    wr_seq.allow_illegal = 1;
+    wr_seq.check_resp    = 1;
+    wr_seq.expect_resp   = 2'b10;
     wr_seq.start(m_sequencer);
 
     `uvm_info("SEQ_ILLEGAL_SIZE_WRITE", "Sequence #20 completed", UVM_LOW)

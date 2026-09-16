@@ -1,6 +1,8 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
+// Phase 1 write driver: sequential AW -> W beats -> B response.
+// Outstanding AW/W overlap and programmable BREADY policy come later (F2/F3/F37).
 class axi4_write_driver extends uvm_driver #(axi4_write_txn);
   `uvm_component_utils(axi4_write_driver)
 
@@ -12,121 +14,148 @@ class axi4_write_driver extends uvm_driver #(axi4_write_txn);
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
-    `uvm_info("WRITE_DRV", "build_phase executed", UVM_LOW)
     if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
       `uvm_fatal("WRITE_DRV", "Virtual interface 'vif' not found in config DB")
   endfunction
 
   task run_phase(uvm_phase phase);
-    `uvm_info("WRITE_DRV", "run_phase started", UVM_LOW)
-    forever begin
-      seq_item_port.get_next_item(req);
-      `uvm_info("WRITE_DRV", $sformatf("Driving write txn: ID=%0d Addr=0x%0h", req.id, req.addr), UVM_HIGH)
-      #10;
-      seq_item_port.item_done();
-    end
-  endtask
-
-endclass
-
-
-/*import uvm_pkg::*;
-`include "uvm_macros.svh"
-
-class axi4_write_driver extends uvm_driver #(axi4_write_txn);
-  `uvm_component_utils(axi4_write_driver)
-
-  virtual axi4_if vif;
-
-  function new(string name = "axi4_write_driver", uvm_component parent = null);
-    super.new(name, parent);
-  endfunction
-
-  function void build_phase(uvm_phase phase);
-    super.build_phase(phase);
-    `uvm_info("WRITE_DRV", "build_phase executed", UVM_LOW)
-    if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
-      `uvm_fatal("WRITE_DRV", "Virtual interface 'vif' not found in config DB")
-  endfunction
-
-  task run_phase(uvm_phase phase);
-    `uvm_info("WRITE_DRV", "run_phase started", UVM_LOW)
-    
-    // Reset signals initially
     reset_signals();
 
     forever begin
-      // Wait until reset is deasserted before driving transactions
-      wait(vif.aresetn === 1'b1);
-
       seq_item_port.get_next_item(req);
-      `uvm_info("WRITE_DRV", $sformatf("Driving write txn: ID=%0d Addr=0x%0h Len=%0d", 
-                req.id, req.addr, req.len), UVM_HIGH)
 
-      drive_write_txn(req);
+      // Level-sensitive: also covers "already in reset" (negedge alone can miss that)
+      if (vif.ARESETn !== 1'b1) begin
+        `uvm_info("WRITE_DRV", "Waiting for ARESETn before driving write", UVM_MEDIUM)
+        wait (vif.ARESETn === 1'b1);
+      end
 
+      // Sync to clock before first drive edge
+      @(posedge vif.ACLK);
+      vif.BREADY <= 1'b1;
+
+      `uvm_info("WRITE_DRV",
+        $sformatf("Driving write: ID=%0d Addr=0x%0h Len=%0d Size=%0d Burst=%0d",
+                  req.id, req.addr, req.len, req.size, req.burst), UVM_MEDIUM)
+
+      fork
+        begin
+          drive_write_txn(req);
+        end
+        begin
+          // Abort if reset asserts (or is already low)
+          wait (vif.ARESETn !== 1'b1);
+          reset_signals();
+        end
+      join_any
+      disable fork;
+
+      // Always complete the sequencer handshake (even if reset aborted the drive)
+      idle_write_channels();
       seq_item_port.item_done();
     end
   endtask
 
-  // Task to initialize interface driving signals
+  // Drive all master-owned write-side pins to a known idle state
   task reset_signals();
-    vif.awid    <= '0;
-    vif.awaddr  <= '0;
-    vif.awlen   <= '0;
-    vif.awsize  <= '0;
-    vif.awburst <= '0;
-    vif.awvalid <= 1'b0;
+    vif.AWID    <= '0;
+    vif.AWADDR  <= '0;
+    vif.AWLEN   <= '0;
+    vif.AWSIZE  <= '0;
+    vif.AWBURST <= '0;
+    vif.AWVALID <= 1'b0;
 
-    vif.wdata   <= '0;
-    vif.wstrb   <= '0;
-    vif.wlast   <= 1'b0;
-    vif.wvalid  <= 1'b0;
+    vif.WDATA   <= '0;
+    vif.WSTRB   <= '0;
+    vif.WLAST   <= 1'b0;
+    vif.WVALID  <= 1'b0;
 
-    vif.bready  <= 1'b0;
+    vif.BREADY  <= 1'b0;
   endtask
 
-  // Main driving task for AW, W, and B channels
+  // After a completed (or aborted) item, leave valids low; keep BREADY if out of reset
+  task idle_write_channels();
+    vif.AWVALID <= 1'b0;
+    vif.WVALID  <= 1'b0;
+    vif.WLAST   <= 1'b0;
+    if (vif.ARESETn === 1'b1)
+      vif.BREADY <= 1'b1;
+    else
+      vif.BREADY <= 1'b0;
+  endtask
+
   task drive_write_txn(axi4_write_txn txn);
-    // 1. Drive Write Address (AW Channel)
-    @(posedge vif.aclk);
-    vif.awid    <= txn.id;
-    vif.awaddr  <= txn.addr;
-    vif.awlen   <= txn.len;
-    vif.awsize  <= txn.size;
-    vif.awburst <= txn.burst;
-    vif.awvalid <= 1'b1;
+    int unsigned num_beats;
+    int unsigned i;
 
-    // Wait for AWREADY handshake
-    do begin
-      @(posedge vif.aclk);
-    end while (!vif.awready);
-    vif.awvalid <= 1'b0;
+    num_beats = int'(txn.len) + 1;
 
-    // 2. Drive Write Data Beats (W Channel)
-    for (int i = 0; i <= txn.len; i++) begin
-      vif.wdata  <= txn.data[i];
-      vif.wstrb  <= txn.strb[i];
-      vif.wlast  <= (i == txn.len) ? 1'b1 : 1'b0;
-      vif.wvalid <= 1'b1;
+    if (txn.data.size() < num_beats)
+      `uvm_fatal("WRITE_DRV",
+        $sformatf("data.size()=%0d < expected beats=%0d", txn.data.size(), num_beats))
+    if (txn.strb.size() < num_beats)
+      `uvm_fatal("WRITE_DRV",
+        $sformatf("strb.size()=%0d < expected beats=%0d", txn.strb.size(), num_beats))
 
-      // Wait for WREADY handshake
-      do begin
-        @(posedge vif.aclk);
-      end while (!vif.wready);
+    if (vif.ARESETn !== 1'b1)
+      return;
+
+    // ----- AW channel -----
+    vif.AWID    <= txn.id;
+    vif.AWADDR  <= txn.addr;
+    vif.AWLEN   <= txn.len;
+    vif.AWSIZE  <= txn.size;
+    vif.AWBURST <= txn.burst;
+    vif.AWVALID <= 1'b1;
+
+    // Wait for AW handshake (VALID already high from previous NBA or same cycle schedule)
+    while (1) begin
+      @(posedge vif.ACLK);
+      if (vif.ARESETn !== 1'b1)
+        return;
+      if (vif.AWVALID && vif.AWREADY)
+        break;
     end
-    vif.wvalid <= 1'b0;
-    vif.wlast  <= 1 me; // clean up wlast
 
-    // 3. Collect Response (B Channel)
-    vif.bready <= 1'b1;
-    do begin
-      @(posedge vif.aclk);
-    end while (!vif.bvalid);
-    
-    // Sample response
-    txn.resp = vif.bresp;
-    vif.bready <= 1'b0;
+    vif.AWVALID <= 1'b0;
+
+    // ----- W channel -----
+    for (i = 0; i < num_beats; i++) begin
+      if (vif.ARESETn !== 1'b1)
+        return;
+
+      vif.WDATA  <= txn.data[i];
+      vif.WSTRB  <= txn.strb[i];
+      vif.WLAST  <= (i == (num_beats - 1));
+      vif.WVALID <= 1'b1;
+
+      while (1) begin
+        @(posedge vif.ACLK);
+        if (vif.ARESETn !== 1'b1)
+          return;
+        if (vif.WVALID && vif.WREADY)
+          break;
+      end
+    end
+
+    vif.WVALID <= 1'b0;
+    vif.WLAST  <= 1'b0;
+
+    // ----- B channel (BREADY held high by run_phase / idle) -----
+    while (1) begin
+      @(posedge vif.ACLK);
+      if (vif.ARESETn !== 1'b1)
+        return;
+      if (vif.BVALID && vif.BREADY)
+        break;
+    end
+
+    // Sample while BRESP still reflects the accepted response (before NBA pops the queue)
+    txn.resp = vif.BRESP;
+
+    `uvm_info("WRITE_DRV",
+      $sformatf("Write complete: ID=%0d Addr=0x%0h BRESP=%0d",
+                txn.id, txn.addr, txn.resp), UVM_MEDIUM)
   endtask
 
-endclass*/
+endclass

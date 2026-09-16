@@ -5,7 +5,7 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-class seq_reg_bit_bash_all extends uvm_sequence #(axi4_write_txn);
+class seq_reg_bit_bash_all extends axi4_vseq_base;
   `uvm_object_utils(seq_reg_bit_bash_all)
 
   function new(string name = "seq_reg_bit_bash_all");
@@ -31,7 +31,7 @@ class seq_reg_bit_bash_all extends uvm_sequence #(axi4_write_txn);
         wr_seq.override_data= 1;
         wr_seq.seq_data     = new[1];
         wr_seq.seq_data[0]  = test_patterns[p];
-        wr_seq.start(m_sequencer);
+        start_write(wr_seq);
 
         rd_seq = axi4_read_base_seq::type_id::create("rd_seq");
         rd_seq.seq_id   = 4'h1;
@@ -39,7 +39,7 @@ class seq_reg_bit_bash_all extends uvm_sequence #(axi4_write_txn);
         rd_seq.seq_len  = 8'h00;
         rd_seq.seq_size = 3'b010;
         rd_seq.seq_burst= 2'b00;
-        rd_seq.start(m_sequencer);
+        start_read(rd_seq);
       end
     end
 

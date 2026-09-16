@@ -19,6 +19,12 @@ class axi4_write_base_seq extends uvm_sequence #(axi4_write_txn);
   bit override_strb = 0;
   bit [3:0] fixed_strb = 4'hF;
 
+  // Negative-test / checking knobs
+  bit        allow_illegal = 0;
+  bit        check_resp    = 0;
+  bit [1:0]  expect_resp   = 2'b00; // OKAY by default
+  bit [1:0]  last_resp;
+
   function new(string name = "axi4_write_base_seq");
     super.new(name);
   endfunction
@@ -26,15 +32,16 @@ class axi4_write_base_seq extends uvm_sequence #(axi4_write_txn);
   virtual task body();
     axi4_write_txn tr;
     tr = axi4_write_txn::type_id::create("tr");
+    tr.allow_illegal = allow_illegal;
 
     start_item(tr);
 
     if (!tr.randomize() with {
-      id    == seq_id;
-      addr  == seq_addr;
-      len   == seq_len;
-      size  == seq_size;
-      burst == seq_burst;
+      id    == local::seq_id;
+      addr  == local::seq_addr;
+      len   == local::seq_len;
+      size  == local::seq_size;
+      burst == local::seq_burst;
     }) begin
       `uvm_error("WRITE_BASE_SEQ", "Randomization failed for write transaction item")
     end
@@ -50,6 +57,14 @@ class axi4_write_base_seq extends uvm_sequence #(axi4_write_txn);
     end
 
     finish_item(tr);
+
+    last_resp = tr.resp;
+
+    if (check_resp && (tr.resp !== expect_resp)) begin
+      `uvm_error("WRITE_BASE_SEQ",
+        $sformatf("BRESP mismatch @0x%0h: got=%0d expect=%0d (id=%0d len=%0d burst=%0d)",
+                  tr.addr, tr.resp, expect_resp, tr.id, tr.len, tr.burst))
+    end
   endtask
 
 endclass

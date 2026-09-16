@@ -55,6 +55,8 @@ class seq_fifo_overflow_push_while_full extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'hBAD00000;
+    wr_seq.check_resp   = 1;
+    wr_seq.expect_resp  = 2'b10; // SLVERR on overflow
     wr_seq.start(m_sequencer);
 
     `uvm_info("SEQ_FIFO_OVERFLOW", "Sequence #39 completed", UVM_LOW)

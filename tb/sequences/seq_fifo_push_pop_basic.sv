@@ -5,7 +5,7 @@
 import uvm_pkg::*;
 `include "uvm_macros.svh"
 
-class seq_fifo_push_pop_basic extends uvm_sequence #(axi4_write_txn);
+class seq_fifo_push_pop_basic extends axi4_vseq_base;
   `uvm_object_utils(seq_fifo_push_pop_basic)
 
   function new(string name = "seq_fifo_push_pop_basic");
@@ -28,7 +28,7 @@ class seq_fifo_push_pop_basic extends uvm_sequence #(axi4_write_txn);
     wr_seq.override_data= 1;
     wr_seq.seq_data     = new[1];
     wr_seq.seq_data[0]  = 32'h00000002;
-    wr_seq.start(m_sequencer);
+    start_write(wr_seq);
 
     // Push 4 entries
     for (int i = 0; i < 4; i++) begin
@@ -42,7 +42,7 @@ class seq_fifo_push_pop_basic extends uvm_sequence #(axi4_write_txn);
       wr_seq.override_data= 1;
       wr_seq.seq_data     = new[1];
       wr_seq.seq_data[0]  = 32'hA0A00000 + i;
-      wr_seq.start(m_sequencer);
+      start_write(wr_seq);
     end
 
     // Pop 4 entries
@@ -53,7 +53,7 @@ class seq_fifo_push_pop_basic extends uvm_sequence #(axi4_write_txn);
       rd_seq.seq_len  = 8'h00;
       rd_seq.seq_size = 3'b010;
       rd_seq.seq_burst= 2'b00;
-      rd_seq.start(m_sequencer);
+      start_read(rd_seq);
     end
 
     `uvm_info("SEQ_FIFO_PUSH_POP_BASIC", "Sequence #38 completed", UVM_LOW)
