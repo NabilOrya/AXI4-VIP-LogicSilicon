@@ -1,6 +1,6 @@
 # AXI4 VIP — Project Progress Report
 
-**Repository:** https://github.com/NabilOrya/AXI4_VIP  
+**Repository:** https://github.com/NabilOrya/AXI4-VIP-LogicSilicon  
 **Project:** UVM Verification of AXI4 Full Burst Memory and FIFO Peripheral (`axi4_peripheral`)  
 **Plan source:** `docs/AXI4_Verification_Plan.docx`  
 **Report date:** 2026-09-16  
