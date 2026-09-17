@@ -5,6 +5,9 @@ import uvm_pkg::*;
 class axi4_scoreboard extends uvm_scoreboard;
   `uvm_component_utils(axi4_scoreboard)
 
+  virtual axi4_if    vif;
+  axi4_ref_model     ref_model; // set by env for IRQ pin vs golden
+
   // Actuals from monitors
   uvm_analysis_imp_write #(axi4_write_txn, axi4_scoreboard) write_export;
   uvm_analysis_imp_read  #(axi4_read_txn,  axi4_scoreboard) read_export;
@@ -18,7 +21,7 @@ class axi4_scoreboard extends uvm_scoreboard;
   axi4_read_txn  exp_rd_q[$];
   axi4_read_txn  act_rd_q[$];
 
-  int unsigned pass_wr, fail_wr, pass_rd, fail_rd;
+  int unsigned pass_wr, fail_wr, pass_rd, fail_rd, pass_irq, fail_irq;
 
   function new(string name = "axi4_scoreboard", uvm_component parent = null);
     super.new(name, parent);
@@ -30,7 +33,47 @@ class axi4_scoreboard extends uvm_scoreboard;
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
+    if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
+      void'(uvm_config_db#(virtual axi4_if)::get(null, "*", "vif", vif));
     `uvm_info("SCOREBOARD", "build_phase executed", UVM_LOW)
+  endfunction
+
+  // Drop in-flight compare queues on reset — aborted bursts must not pair later
+  task run_phase(uvm_phase phase);
+    if (vif == null) begin
+      `uvm_warning("SCOREBOARD", "vif not set — cannot flush on mid-sim reset")
+      return;
+    end
+    forever begin
+      wait (vif.ARESETn !== 1'b1);
+      flush_queues();
+      `uvm_info("SCOREBOARD", "ARESETn asserted — compare queues flushed", UVM_MEDIUM)
+      wait (vif.ARESETn === 1'b1);
+    end
+  endtask
+
+  function void flush_queues();
+    exp_wr_q.delete();
+    act_wr_q.delete();
+    exp_rd_q.delete();
+    act_rd_q.delete();
+  endfunction
+
+  // Compare DUT IRQ pin to ref golden after each completed txn (plan §4.6)
+  function void check_irq_pin(string ctx);
+    bit exp_irq;
+    if (vif == null || ref_model == null)
+      return;
+    if (vif.ARESETn !== 1'b1)
+      return;
+    exp_irq = ref_model.irq_value();
+    if (vif.IRQ !== exp_irq) begin
+      fail_irq++;
+      `uvm_error("SCOREBOARD",
+        $sformatf("IRQ pin mismatch %s: act=%0b exp=%0b", ctx, vif.IRQ, exp_irq))
+    end
+    else
+      pass_irq++;
   endfunction
 
   // ---- Actual write ----
@@ -90,6 +133,7 @@ class axi4_scoreboard extends uvm_scoreboard;
         `uvm_info("SCOREBOARD",
           $sformatf("WR MATCH ID=%0d Addr=0x%0h BRESP=%0d", act.id, act.addr, act.resp),
           UVM_MEDIUM)
+        check_irq_pin($sformatf("after WR @0x%0h", act.addr));
       end
     end
   endfunction
@@ -153,6 +197,7 @@ class axi4_scoreboard extends uvm_scoreboard;
           $sformatf("RD MATCH ID=%0d Addr=0x%0h RESP=%0d Data0=0x%08h",
                     act.id, act.addr, act.final_resp,
                     (act.data.size() ? act.data[0] : 0)), UVM_MEDIUM)
+        check_irq_pin($sformatf("after RD @0x%0h", act.addr));
       end
     end
   endfunction
@@ -172,8 +217,8 @@ class axi4_scoreboard extends uvm_scoreboard;
   function void report_phase(uvm_phase phase);
     super.report_phase(phase);
     `uvm_info("SCOREBOARD",
-      $sformatf("Results: WR pass=%0d fail=%0d | RD pass=%0d fail=%0d",
-                pass_wr, fail_wr, pass_rd, fail_rd), UVM_LOW)
+      $sformatf("Results: WR pass=%0d fail=%0d | RD pass=%0d fail=%0d | IRQ pass=%0d fail=%0d",
+                pass_wr, fail_wr, pass_rd, fail_rd, pass_irq, fail_irq), UVM_LOW)
   endfunction
 
 endclass

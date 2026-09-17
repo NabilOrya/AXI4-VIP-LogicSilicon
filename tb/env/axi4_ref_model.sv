@@ -8,6 +8,8 @@ import uvm_pkg::*;
 class axi4_ref_model extends uvm_component;
   `uvm_component_utils(axi4_ref_model)
 
+  virtual axi4_if vif;
+
   uvm_analysis_imp_write #(axi4_write_txn, axi4_ref_model) write_export;
   uvm_analysis_imp_read  #(axi4_read_txn,  axi4_ref_model) read_export;
 
@@ -50,9 +52,25 @@ class axi4_ref_model extends uvm_component;
 
   function void build_phase(uvm_phase phase);
     super.build_phase(phase);
+    if (!uvm_config_db#(virtual axi4_if)::get(this, "", "vif", vif))
+      void'(uvm_config_db#(virtual axi4_if)::get(null, "*", "vif", vif));
     do_reset();
     `uvm_info("REF_MODEL", "build_phase: shadow state reset", UVM_LOW)
   endfunction
+
+  // Keep shadow state aligned with DUT on every ARESETn assertion (F1/F34)
+  task run_phase(uvm_phase phase);
+    if (vif == null) begin
+      `uvm_warning("REF_MODEL", "vif not set — cannot track mid-sim reset")
+      return;
+    end
+    forever begin
+      wait (vif.ARESETn !== 1'b1);
+      do_reset();
+      `uvm_info("REF_MODEL", "ARESETn asserted — shadow state cleared", UVM_MEDIUM)
+      wait (vif.ARESETn === 1'b1);
+    end
+  endtask
 
   // ------------------------------------------------------------------
   // Reset / IRQ / helpers
@@ -65,6 +83,7 @@ class axi4_ref_model extends uvm_component;
     delay_cfg  = 8'h00;
     txn_count  = 32'h0;
     fifo_q.delete();
+    // F24: empty/full are level-set — FIFO starts empty after reset
     refresh_fifo_level_flags();
   endfunction
 
@@ -151,11 +170,13 @@ class axi4_ref_model extends uvm_component;
 
   function bit [31:0] read_reg(bit [15:0] a);
     bit [4:0] lvl;
-    // At completed-txn boundaries busy bits are modeled as 0 (Phase-1 sequential).
+    // RTL STATUS busy bits: wr_busy=(aw_count!=0)||wr_active, rd_busy=(ar_count!=0)||rd_active.
+    // RDATA is formed while rd_active=1, so any STATUS read beat sees rd_busy=1.
+    // Phase-1 sequential drivers: wr_busy=0 when predicting a standalone STATUS read.
     lvl = fifo_level();
     case (a)
       A_CTRL:       return {29'h0, ctrl};
-      A_STATUS:     return {27'h0, irq_value(), fifo_full(), fifo_empty(), 1'b0, 1'b0};
+      A_STATUS:     return {27'h0, irq_value(), fifo_full(), fifo_empty(), 1'b1, 1'b0};
       A_INT_EN:     return {29'h0, int_en};
       A_INT_STATUS: return {29'h0, int_status};
       A_FIFO_DATA:  return fifo_empty() ? 32'h0 : fifo_q[0];
